@@ -34,12 +34,14 @@ func (v V) Has(key string) bool {
 // Encode 通过自定义的符号和分隔符按照key的ASCII码升序格式化为字符串。
 // 例如：("=", "&") ---> bar=baz&foo=quux；
 // 例如：(":", "#") ---> bar:baz#foo:quux；
-func (v V) Encode(sym, sep string, options ...VEncodeOption) string {
+func (v V) Encode(sym, sep string, options ...EncodeVOption) string {
 	if len(v) == 0 {
 		return ""
 	}
 
-	setting := new(vencodeSetting)
+	setting := &encodeVSetting{
+		ignoreKeys: make(map[string]struct{}),
+	}
 
 	for _, f := range options {
 		f(setting)
@@ -48,7 +50,9 @@ func (v V) Encode(sym, sep string, options ...VEncodeOption) string {
 	keys := make([]string, 0, len(v))
 
 	for k := range v {
-		keys = append(keys, k)
+		if _, ok := setting.ignoreKeys[k]; !ok {
+			keys = append(keys, k)
+		}
 	}
 
 	sort.Strings(keys)
@@ -102,24 +106,34 @@ const (
 	EmptyEncodeOnlyKey                         // 仅保留Key：bar=baz&foo
 )
 
-type vencodeSetting struct {
-	escape    bool
-	emptyMode VEmptyEncodeMode
+type encodeVSetting struct {
+	escape     bool
+	emptyMode  VEmptyEncodeMode
+	ignoreKeys map[string]struct{}
 }
 
-// VEncodeOption V Encode 选项
-type VEncodeOption func(s *vencodeSetting)
+// EncodeVOption V Encode 选项
+type EncodeVOption func(s *encodeVSetting)
 
 // WithEmptyEncodeMode 设置值为空时的Encode模式
-func WithEmptyEncodeMode(mode VEmptyEncodeMode) VEncodeOption {
-	return func(s *vencodeSetting) {
+func WithEmptyEncodeMode(mode VEmptyEncodeMode) EncodeVOption {
+	return func(s *encodeVSetting) {
 		s.emptyMode = mode
 	}
 }
 
 // WithKVEscape 设置K-V是否需要QueryEscape
-func WithKVEscape() VEncodeOption {
-	return func(s *vencodeSetting) {
+func WithKVEscape() EncodeVOption {
+	return func(s *encodeVSetting) {
 		s.escape = true
+	}
+}
+
+// WithIgnoreKeys 设置Encode时忽略的key
+func WithIgnoreKeys(keys ...string) EncodeVOption {
+	return func(s *encodeVSetting) {
+		for _, k := range keys {
+			s.ignoreKeys[k] = struct{}{}
+		}
 	}
 }

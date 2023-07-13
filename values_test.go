@@ -20,16 +20,19 @@ func TestV(t *testing.T) {
 	v2.Set("bar", "baz@666")
 	v2.Set("foo", "quux%666")
 
+	assert.Equal(t, "bar=baz@666&foo=quux%666", v2.Encode("=", "&"))
 	assert.Equal(t, "bar=baz%40666&foo=quux%25666", v2.Encode("=", "&", WithKVEscape()))
-	assert.Equal(t, "bar:baz%40666#foo:quux%25666", v2.Encode(":", "#", WithKVEscape()))
 
 	v3 := V{}
 
+	v3.Set("hello", "world")
 	v3.Set("bar", "baz")
 	v3.Set("foo", "")
 
-	assert.Equal(t, "bar=baz&foo=", v3.Encode("=", "&"))
-	assert.Equal(t, "bar=baz&foo=", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeDefault)))
-	assert.Equal(t, "bar=baz&foo", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeOnlyKey)))
-	assert.Equal(t, "bar=baz", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeIgnore)))
+	assert.Equal(t, "bar=baz&foo=&hello=world", v3.Encode("=", "&"))
+	assert.Equal(t, "bar=baz&foo=&hello=world", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeDefault)))
+	assert.Equal(t, "bar=baz&foo&hello=world", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeOnlyKey)))
+	assert.Equal(t, "bar=baz&hello=world", v3.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeIgnore)))
+	assert.Equal(t, "bar=baz&foo=", v3.Encode("=", "&", WithIgnoreKeys("hello")))
+	assert.Equal(t, "bar=baz", v3.Encode("=", "&", WithIgnoreKeys("hello"), WithEmptyEncodeMode(EmptyEncodeIgnore)))
 }
