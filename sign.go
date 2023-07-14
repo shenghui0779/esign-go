@@ -115,7 +115,7 @@ func NewSigner(method, path string, options ...SignOption) *Signer {
 
 	if len(fields.params) != 0 {
 		buf.WriteString("?")
-		buf.WriteString(fields.params.Encode("=", "&", WithEmptyEncodeMode(EmptyEncodeOnlyKey)))
+		buf.WriteString(fields.params.Encode("=", "&", WithEmptyEncMode(EmptyEncOnlyKey)))
 	}
 
 	return &Signer{str: buf.String()}
