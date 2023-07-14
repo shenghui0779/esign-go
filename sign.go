@@ -9,12 +9,12 @@ import (
 )
 
 type signfields struct {
-	accept      string
-	contentMD5  string
-	contentType string
-	date        string
-	headers     V
-	params      V
+	accept   string
+	contMD5  string
+	contType string
+	date     string
+	headers  V
+	params   V
 }
 
 type SignOption func(sf *signfields)
@@ -25,15 +25,15 @@ func WithSignAccept(v string) SignOption {
 	}
 }
 
-func WithSignContentMD5(v string) SignOption {
+func WithSignContMD5(v string) SignOption {
 	return func(sf *signfields) {
-		sf.contentMD5 = v
+		sf.contMD5 = v
 	}
 }
 
-func WithSignContentType(v string) SignOption {
+func WithSignContType(v string) SignOption {
 	return func(sf *signfields) {
-		sf.contentType = v
+		sf.contType = v
 	}
 }
 
@@ -99,9 +99,9 @@ func NewSigner(method, path string, options ...SignOption) *Signer {
 	buf.WriteString("\n")
 	buf.WriteString(fields.accept)
 	buf.WriteString("\n")
-	buf.WriteString(fields.contentMD5)
+	buf.WriteString(fields.contMD5)
 	buf.WriteString("\n")
-	buf.WriteString(fields.contentType)
+	buf.WriteString(fields.contType)
 	buf.WriteString("\n")
 	buf.WriteString(fields.date)
 	buf.WriteString("\n")

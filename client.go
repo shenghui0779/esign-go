@@ -25,20 +25,24 @@ type ESignClient struct {
 	client HTTPClient
 }
 
-func (esc *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
+func (c *ESignClient) SetHTTPClient(cli *http.Client) {
+	c.client = NewHTTPClient(cli)
+}
+
+func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
 	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
-	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(esc.secret)
+	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
 
-	reqURL := esc.host + path
+	reqURL := c.host + path
 
 	if len(query) != 0 {
 		reqURL = reqURL + "?" + query.Encode()
 	}
 
-	resp, err := esc.client.Do(ctx, http.MethodGet, reqURL, nil,
+	resp, err := c.client.Do(ctx, http.MethodGet, reqURL, nil,
 		WithHTTPHeader("Accept", Accept),
-		WithHTTPHeader("X-Tsign-Open-App-Id", esc.appid),
+		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
 		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
 		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
@@ -69,7 +73,7 @@ func (esc *ESignClient) GetJSON(ctx context.Context, path string, query url.Valu
 	return ret.Get("data"), nil
 }
 
-func (esc *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjson.Result, error) {
+func (c *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjson.Result, error) {
 	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
 	body, err := json.Marshal(params)
@@ -80,15 +84,15 @@ func (esc *ESignClient) PostJSON(ctx context.Context, path string, params X) (gj
 
 	contentMD5 := ContentMD5(body)
 
-	sign := NewSigner(http.MethodPost, path, WithSignContentMD5(contentMD5), WithSignContentType(ContentJSON)).Do(esc.secret)
+	sign := NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret)
 
-	reqURL := esc.host + path
+	reqURL := c.host + path
 
-	resp, err := esc.client.Do(ctx, http.MethodPost, reqURL, body,
+	resp, err := c.client.Do(ctx, http.MethodPost, reqURL, body,
 		WithHTTPHeader("Accept", Accept),
 		WithHTTPHeader("Content-Type", ContentJSON),
 		WithHTTPHeader("Content-MD5", contentMD5),
-		WithHTTPHeader("X-Tsign-Open-App-Id", esc.appid),
+		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
 		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
 		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
@@ -119,7 +123,7 @@ func (esc *ESignClient) PostJSON(ctx context.Context, path string, params X) (gj
 	return ret.Get("data"), nil
 }
 
-func (esc *ESignClient) PutStream(ctx context.Context, uploadURL, filename string) error {
+func (c *ESignClient) PutStream(ctx context.Context, uploadURL, filename string) error {
 	f, err := os.Open(filename)
 
 	if err != nil {
@@ -142,7 +146,7 @@ func (esc *ESignClient) PutStream(ctx context.Context, uploadURL, filename strin
 		return err
 	}
 
-	resp, err := esc.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(),
+	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(),
 		WithHTTPHeader("Content-Type", ContentStream),
 		WithHTTPHeader("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil))),
 	)
@@ -172,25 +176,11 @@ func (esc *ESignClient) PutStream(ctx context.Context, uploadURL, filename strin
 	return nil
 }
 
-type ESignOption func(esc *ESignClient)
-
-func WithHTTPClient(client *http.Client) ESignOption {
-	return func(esc *ESignClient) {
-		esc.client = NewHTTPClient(client)
-	}
-}
-
-func NewESignClient(host, appid, secret string, options ...ESignOption) *ESignClient {
-	esc := &ESignClient{
+func NewESignClient(host, appid, secret string) *ESignClient {
+	return &ESignClient{
 		host:   host,
 		appid:  appid,
 		secret: secret,
 		client: NewDefaultHTTPClient(),
 	}
-
-	for _, f := range options {
-		f(esc)
-	}
-
-	return esc
 }
