@@ -28,7 +28,7 @@ type ESignClient struct {
 func (esc *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
 	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
-	sign := NewSigner(http.MethodGet, path, WithValues(query)).Do(esc.secret)
+	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(esc.secret)
 
 	reqURL := esc.host + path
 
@@ -51,7 +51,7 @@ func (esc *ESignClient) GetJSON(ctx context.Context, path string, query url.Valu
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fail(fmt.Errorf("err http status: %d", resp.StatusCode))
+		return fail(fmt.Errorf("unexpected http status: %d", resp.StatusCode))
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
@@ -80,7 +80,7 @@ func (esc *ESignClient) PostJSON(ctx context.Context, path string, params X) (gj
 
 	contentMD5 := ContentMD5(body)
 
-	sign := NewSigner(http.MethodPost, path, WithContentMD5(contentMD5), WithContentType(ContentJSON)).Do(esc.secret)
+	sign := NewSigner(http.MethodPost, path, WithSignContentMD5(contentMD5), WithSignContentType(ContentJSON)).Do(esc.secret)
 
 	reqURL := esc.host + path
 
@@ -101,7 +101,7 @@ func (esc *ESignClient) PostJSON(ctx context.Context, path string, params X) (gj
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fail(fmt.Errorf("err http status: %d", resp.StatusCode))
+		return fail(fmt.Errorf("unexpected http status: %d", resp.StatusCode))
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
@@ -154,7 +154,7 @@ func (esc *ESignClient) PutStream(ctx context.Context, uploadURL, filename strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("err http status: %d", resp.StatusCode)
+		return fmt.Errorf("unexpected http status: %d", resp.StatusCode)
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)

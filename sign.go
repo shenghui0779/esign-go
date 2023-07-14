@@ -19,43 +19,43 @@ type signfields struct {
 
 type SignOption func(sf *signfields)
 
-func WithAccept(v string) SignOption {
+func WithSignAccept(v string) SignOption {
 	return func(sf *signfields) {
 		sf.accept = v
 	}
 }
 
-func WithContentMD5(v string) SignOption {
+func WithSignContentMD5(v string) SignOption {
 	return func(sf *signfields) {
 		sf.contentMD5 = v
 	}
 }
 
-func WithContentType(v string) SignOption {
+func WithSignContentType(v string) SignOption {
 	return func(sf *signfields) {
 		sf.contentType = v
 	}
 }
 
-func WithDate(v string) SignOption {
+func WithSignDate(v string) SignOption {
 	return func(sf *signfields) {
 		sf.date = v
 	}
 }
 
-func WithHeader(k, v string) SignOption {
+func WithSignHeader(k, v string) SignOption {
 	return func(sf *signfields) {
 		sf.headers.Set(k, v)
 	}
 }
 
-func WithParam(k, v string) SignOption {
+func WithSignParam(k, v string) SignOption {
 	return func(sf *signfields) {
 		sf.params.Set(k, v)
 	}
 }
 
-func WithValues(v url.Values) SignOption {
+func WithSignValues(v url.Values) SignOption {
 	return func(sf *signfields) {
 		for key, vals := range v {
 			if len(vals) != 0 {
