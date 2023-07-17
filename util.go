@@ -14,8 +14,10 @@ var (
 	ContentStream = "application/octet-stream"
 )
 
+// X `map[string]any` 别名
 type X map[string]any
 
+// ContentMD5 计算内容MD5值
 func ContentMD5(b []byte) string {
 	h := md5.New()
 	h.Write(b)
@@ -23,6 +25,7 @@ func ContentMD5(b []byte) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
+// FileMD5 计算文件MD5值
 func FileMD5(filename string) (string, int64) {
 	f, err := os.Open(filename)
 

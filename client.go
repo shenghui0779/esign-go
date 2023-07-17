@@ -3,8 +3,11 @@ package esign_v2
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +21,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// ESignClient E签宝客户端
 type ESignClient struct {
 	host   string
 	appid  string
@@ -25,10 +29,12 @@ type ESignClient struct {
 	client HTTPClient
 }
 
+// SetHTTPClient 设置 HTTP Client
 func (c *ESignClient) SetHTTPClient(cli *http.Client) {
 	c.client = NewHTTPClient(cli)
 }
 
+// GetJSON GET请求JSON数据
 func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
 	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
@@ -73,6 +79,7 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 	return ret.Get("data"), nil
 }
 
+// PostJSON POST请求JSON数据
 func (c *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjson.Result, error) {
 	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
@@ -123,6 +130,7 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjso
 	return ret.Get("data"), nil
 }
 
+// PutStream 上传文件流
 func (c *ESignClient) PutStream(ctx context.Context, uploadURL, filename string) error {
 	f, err := os.Open(filename)
 
@@ -176,6 +184,28 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL, filename string)
 	return nil
 }
 
+// Verify 签名验证 (回调通知等)
+func (c *ESignClient) Verify(header http.Header, body []byte) error {
+	appid := header.Get("X-Tsign-Open-App-Id")
+	timestamp := header.Get("X-Tsign-Open-TIMESTAMP")
+	sign := header.Get("X-Tsign-Open-SIGNATURE")
+
+	if appid != c.appid {
+		return fmt.Errorf("appid mismatch, expect: %s, actual: %s", c.appid, appid)
+	}
+
+	h := hmac.New(sha256.New, []byte(c.secret))
+	h.Write([]byte(timestamp))
+	h.Write(body)
+
+	if v := hex.EncodeToString(h.Sum(nil)); v != sign {
+		return fmt.Errorf("signature mismatch, expect: %s, actual: %s", v, sign)
+	}
+
+	return nil
+}
+
+// NewESignClient 返回E签宝客户端
 func NewESignClient(host, appid, secret string) *ESignClient {
 	return &ESignClient{
 		host:   host,
