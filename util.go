@@ -5,9 +5,13 @@ import (
 	"encoding/base64"
 	"io"
 	"os"
+
+	"github.com/tidwall/gjson"
 )
 
-var (
+var fail = func(err error) (gjson.Result, error) { return gjson.Result{}, err }
+
+const (
 	Accept        = "*/*"
 	AuthMode      = "Signature"
 	ContentJSON   = "application/json; charset=UTF-8"

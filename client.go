@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -34,19 +35,31 @@ func (c *ESignClient) SetHTTPClient(cli *http.Client) {
 	c.client = NewHTTPClient(cli)
 }
 
-// GetJSON GET请求JSON数据
-func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
-	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
+// URL 生成请求URL
+func (c *ESignClient) URL(path string, query url.Values) string {
+	var builder strings.Builder
 
-	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
+	builder.WriteString(c.host)
 
-	reqURL := c.host + path
-
-	if len(query) != 0 {
-		reqURL = reqURL + "?" + query.Encode()
+	if len(path) != 0 && path[0] != '/' {
+		builder.WriteString("/")
 	}
 
-	resp, err := c.client.Do(ctx, http.MethodGet, reqURL, nil,
+	builder.WriteString(path)
+
+	if len(query) != 0 {
+		builder.WriteString("?")
+		builder.WriteString(query.Encode())
+	}
+
+	return builder.String()
+}
+
+// GetJSON GET请求JSON数据
+func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
+	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
+
+	resp, err := c.client.Do(ctx, http.MethodGet, c.URL(path, query), nil,
 		WithHTTPHeader("Accept", Accept),
 		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
 		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
@@ -81,8 +94,6 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 
 // PostJSON POST请求JSON数据
 func (c *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjson.Result, error) {
-	fail := func(err error) (gjson.Result, error) { return gjson.Result{}, err }
-
 	body, err := json.Marshal(params)
 
 	if err != nil {
@@ -93,9 +104,7 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X) (gjso
 
 	sign := NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret)
 
-	reqURL := c.host + path
-
-	resp, err := c.client.Do(ctx, http.MethodPost, reqURL, body,
+	resp, err := c.client.Do(ctx, http.MethodPost, c.URL(path, nil), body,
 		WithHTTPHeader("Accept", Accept),
 		WithHTTPHeader("Content-Type", ContentJSON),
 		WithHTTPHeader("Content-MD5", contentMD5),
@@ -206,9 +215,19 @@ func (c *ESignClient) Verify(header http.Header, body []byte) error {
 }
 
 // NewESignClient 返回E签宝客户端
-func NewESignClient(host, appid, secret string) *ESignClient {
+func NewESignClient(appid, secret string) *ESignClient {
 	return &ESignClient{
-		host:   host,
+		host:   "https://openapi.esign.cn",
+		appid:  appid,
+		secret: secret,
+		client: NewDefaultHTTPClient(),
+	}
+}
+
+// NewESignSandboxClient 返回E签宝「沙箱环境」客户端
+func NewESignSandboxClient(appid, secret string) *ESignClient {
+	return &ESignClient{
+		host:   "https://smlopenapi.esign.cn",
 		appid:  appid,
 		secret: secret,
 		client: NewDefaultHTTPClient(),
