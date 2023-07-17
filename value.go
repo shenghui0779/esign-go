@@ -1,4 +1,4 @@
-package esign_v2
+package esign
 
 import (
 	"net/url"
