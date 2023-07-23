@@ -30,7 +30,7 @@ type ESignClient struct {
 	client HTTPClient
 }
 
-// SetHTTPClient 设置 HTTP Client
+// SetHTTPClient 设置自定义Client
 func (c *ESignClient) SetHTTPClient(cli *http.Client) {
 	c.client = NewHTTPClient(cli)
 }
