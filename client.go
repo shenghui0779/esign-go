@@ -280,8 +280,8 @@ func NewESignClient(appid, secret string) *ESignClient {
 	}
 }
 
-// NewESignSandboxClient 返回E签宝「沙箱环境」客户端
-func NewESignSandboxClient(appid, secret string) *ESignClient {
+// NewESignSandbox 返回E签宝「沙箱环境」客户端
+func NewESignSandbox(appid, secret string) *ESignClient {
 	return &ESignClient{
 		host:   "https://smlopenapi.esign.cn",
 		appid:  appid,
