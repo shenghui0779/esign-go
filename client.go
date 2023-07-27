@@ -142,7 +142,59 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 }
 
 // PutStream 上传文件流
-func (c *ESignClient) PutStream(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
+func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker, options ...HTTPOption) error {
+	// 文件指针移动到头部
+	if _, err := reader.Seek(0, 0); err != nil {
+		return err
+	}
+
+	h := md5.New()
+
+	if _, err := io.Copy(h, reader); err != nil {
+		return err
+	}
+
+	// 文件指针移动到头部
+	if _, err := reader.Seek(0, 0); err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer(make([]byte, 0, 20<<10)) // 20kb
+
+	if _, err := io.Copy(buf, reader); err != nil {
+		return err
+	}
+
+	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil))))
+
+	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
+
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return err
+	}
+
+	ret := gjson.ParseBytes(b)
+
+	if code := ret.Get("errCode").Int(); code != 0 {
+		return fmt.Errorf("%d | %s", code, ret.Get("msg"))
+	}
+
+	return nil
+}
+
+func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
 	f, err := os.Open(filename)
 
 	if err != nil {
@@ -157,7 +209,10 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL, filename string,
 		return err
 	}
 
-	f.Seek(0, 0)
+	// 文件指针移动到头部
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 20<<10)) // 20kb
 
