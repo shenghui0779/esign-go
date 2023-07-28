@@ -70,11 +70,19 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 
 	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
 
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+
+	log.Set("Accept", Accept)
+	log.Set("X-Tsign-Open-App-Id", c.appid)
+	log.Set("X-Tsign-Open-Auth-Mode", AuthMode)
+	log.Set("X-Tsign-Open-Ca-Signature", sign)
+	log.Set("X-Tsign-Open-Ca-Timestamp", timestamp)
+
 	options = append(options, WithHTTPHeader("Accept", Accept),
 		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
 		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
 		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
-		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
+		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
 	)
 
 	resp, err := c.client.Do(ctx, http.MethodGet, reqURL, nil, options...)
@@ -125,13 +133,21 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 
 	sign := NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret)
 
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+
+	log.Set("Accept", Accept)
+	log.Set("X-Tsign-Open-App-Id", c.appid)
+	log.Set("X-Tsign-Open-Auth-Mode", AuthMode)
+	log.Set("X-Tsign-Open-Ca-Signature", sign)
+	log.Set("X-Tsign-Open-Ca-Timestamp", timestamp)
+
 	options = append(options, WithHTTPHeader("Accept", Accept),
 		WithHTTPHeader("Content-Type", ContentJSON),
 		WithHTTPHeader("Content-MD5", contentMD5),
 		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
 		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
 		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
-		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
+		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
 	)
 
 	resp, err := c.client.Do(ctx, http.MethodPost, reqURL, body, options...)
@@ -179,6 +195,11 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 		return err
 	}
 
+	contentMD5 := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	log.Set("Content-MD5", contentMD5)
+	log.Set("Content-Type", ContentStream)
+
 	// 文件指针移动到头部
 	if _, err := reader.Seek(0, 0); err != nil {
 		return err
@@ -190,7 +211,7 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 		return err
 	}
 
-	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil))))
+	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
 
 	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
 
@@ -239,6 +260,11 @@ func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename
 		return err
 	}
 
+	contentMD5 := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	log.Set("Content-MD5", contentMD5)
+	log.Set("Content-Type", ContentStream)
+
 	// 文件指针移动到头部
 	if _, err := f.Seek(0, 0); err != nil {
 		return err
@@ -250,7 +276,7 @@ func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename
 		return err
 	}
 
-	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil))))
+	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
 
 	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
 
