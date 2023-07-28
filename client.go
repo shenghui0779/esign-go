@@ -28,11 +28,17 @@ type ESignClient struct {
 	appid  string
 	secret string
 	client HTTPClient
+	logger func(ctx context.Context, method, url, body, resp string)
 }
 
 // SetHTTPClient 设置自定义Client
 func (c *ESignClient) SetHTTPClient(cli *http.Client) {
 	c.client = NewHTTPClient(cli)
+}
+
+// WithLogger 设置日志记录
+func (c *ESignClient) WithLogger(f func(ctx context.Context, method, url, body, resp string)) {
+	c.logger = f
 }
 
 // URL 生成请求URL
@@ -57,6 +63,11 @@ func (c *ESignClient) URL(path string, query url.Values) string {
 
 // GetJSON GET请求JSON数据
 func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values, options ...HTTPOption) (gjson.Result, error) {
+	reqURL := c.URL(path, query)
+
+	log := NewReqLog(http.MethodGet, reqURL)
+	defer log.Do(ctx, c.logger)
+
 	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
 
 	options = append(options, WithHTTPHeader("Accept", Accept),
@@ -66,7 +77,7 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
 	)
 
-	resp, err := c.client.Do(ctx, http.MethodGet, c.URL(path, query), nil, options...)
+	resp, err := c.client.Do(ctx, http.MethodGet, reqURL, nil, options...)
 
 	if err != nil {
 		return fail(err)
@@ -84,6 +95,8 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 		return fail(err)
 	}
 
+	log.SetResp(string(b))
+
 	ret := gjson.ParseBytes(b)
 
 	if code := ret.Get("code").Int(); code != 0 {
@@ -95,11 +108,18 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 
 // PostJSON POST请求JSON数据
 func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, options ...HTTPOption) (gjson.Result, error) {
+	reqURL := c.URL(path, nil)
+
+	log := NewReqLog(http.MethodPost, reqURL)
+	defer log.Do(ctx, c.logger)
+
 	body, err := json.Marshal(params)
 
 	if err != nil {
 		return fail(err)
 	}
+
+	log.SetBody(string(body))
 
 	contentMD5 := ContentMD5(body)
 
@@ -114,7 +134,7 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10)),
 	)
 
-	resp, err := c.client.Do(ctx, http.MethodPost, c.URL(path, nil), body, options...)
+	resp, err := c.client.Do(ctx, http.MethodPost, reqURL, body, options...)
 
 	if err != nil {
 		return fail(err)
@@ -132,6 +152,8 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 		return fail(err)
 	}
 
+	log.SetResp(string(b))
+
 	ret := gjson.ParseBytes(b)
 
 	if code := ret.Get("code").Int(); code != 0 {
@@ -143,6 +165,9 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 
 // PutStream 上传文件流
 func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker, options ...HTTPOption) error {
+	log := NewReqLog(http.MethodPut, uploadURL)
+	defer log.Do(ctx, c.logger)
+
 	// 文件指针移动到头部
 	if _, err := reader.Seek(0, 0); err != nil {
 		return err
@@ -185,6 +210,8 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 		return err
 	}
 
+	log.SetResp(string(b))
+
 	ret := gjson.ParseBytes(b)
 
 	if code := ret.Get("errCode").Int(); code != 0 {
@@ -195,6 +222,9 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 }
 
 func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
+	log := NewReqLog(http.MethodPut, uploadURL)
+	defer log.Do(ctx, c.logger)
+
 	f, err := os.Open(filename)
 
 	if err != nil {
@@ -239,6 +269,8 @@ func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename
 	if err != nil {
 		return err
 	}
+
+	log.SetResp(string(b))
 
 	ret := gjson.ParseBytes(b)
 
