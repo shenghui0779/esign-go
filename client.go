@@ -28,7 +28,7 @@ type ESignClient struct {
 	appid  string
 	secret string
 	client HTTPClient
-	logger func(ctx context.Context, method, url, body, resp string)
+	logger func(ctx context.Context, data map[string]string)
 }
 
 // SetHTTPClient 设置自定义Client
@@ -37,7 +37,7 @@ func (c *ESignClient) SetHTTPClient(cli *http.Client) {
 }
 
 // WithLogger 设置日志记录
-func (c *ESignClient) WithLogger(f func(ctx context.Context, method, url, body, resp string)) {
+func (c *ESignClient) WithLogger(f func(ctx context.Context, data map[string]string)) {
 	c.logger = f
 }
 
