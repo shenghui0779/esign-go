@@ -93,6 +93,8 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 
 	defer resp.Body.Close()
 
+	log.SetStatusCode(resp.StatusCode)
+
 	if resp.StatusCode != http.StatusOK {
 		return fail(fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode))
 	}
@@ -158,6 +160,8 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 
 	defer resp.Body.Close()
 
+	log.SetStatusCode(resp.StatusCode)
+
 	if resp.StatusCode != http.StatusOK {
 		return fail(fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode))
 	}
@@ -220,6 +224,8 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 	}
 
 	defer resp.Body.Close()
+
+	log.SetStatusCode(resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
@@ -285,6 +291,8 @@ func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename
 	}
 
 	defer resp.Body.Close()
+
+	log.SetStatusCode(resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
