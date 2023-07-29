@@ -22,8 +22,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ESignClient E签宝客户端
-type ESignClient struct {
+// Client E签宝客户端
+type Client struct {
 	host   string
 	appid  string
 	secret string
@@ -32,17 +32,17 @@ type ESignClient struct {
 }
 
 // SetHTTPClient 设置自定义Client
-func (c *ESignClient) SetHTTPClient(cli *http.Client) {
+func (c *Client) SetHTTPClient(cli *http.Client) {
 	c.client = NewHTTPClient(cli)
 }
 
 // WithLogger 设置日志记录
-func (c *ESignClient) WithLogger(f func(ctx context.Context, data map[string]string)) {
+func (c *Client) WithLogger(f func(ctx context.Context, data map[string]string)) {
 	c.logger = f
 }
 
 // URL 生成请求URL
-func (c *ESignClient) URL(path string, query url.Values) string {
+func (c *Client) URL(path string, query url.Values) string {
 	var builder strings.Builder
 
 	builder.WriteString(c.host)
@@ -62,7 +62,7 @@ func (c *ESignClient) URL(path string, query url.Values) string {
 }
 
 // GetJSON GET请求JSON数据
-func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values, options ...HTTPOption) (gjson.Result, error) {
+func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, options ...HTTPOption) (gjson.Result, error) {
 	reqURL := c.URL(path, query)
 
 	log := NewReqLog(http.MethodGet, reqURL)
@@ -117,7 +117,7 @@ func (c *ESignClient) GetJSON(ctx context.Context, path string, query url.Values
 }
 
 // PostJSON POST请求JSON数据
-func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, options ...HTTPOption) (gjson.Result, error) {
+func (c *Client) PostJSON(ctx context.Context, path string, params X, options ...HTTPOption) (gjson.Result, error) {
 	reqURL := c.URL(path, nil)
 
 	log := NewReqLog(http.MethodPost, reqURL)
@@ -184,7 +184,7 @@ func (c *ESignClient) PostJSON(ctx context.Context, path string, params X, optio
 }
 
 // PutStream 上传文件流
-func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker, options ...HTTPOption) error {
+func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker, options ...HTTPOption) error {
 	log := NewReqLog(http.MethodPut, uploadURL)
 	defer log.Do(ctx, c.logger)
 
@@ -248,7 +248,7 @@ func (c *ESignClient) PutStream(ctx context.Context, uploadURL string, reader io
 	return nil
 }
 
-func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
+func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
 	log := NewReqLog(http.MethodPut, uploadURL)
 	defer log.Do(ctx, c.logger)
 
@@ -316,7 +316,7 @@ func (c *ESignClient) PutStreamFromFile(ctx context.Context, uploadURL, filename
 }
 
 // Verify 签名验证 (回调通知等)
-func (c *ESignClient) Verify(header http.Header, body []byte) error {
+func (c *Client) Verify(header http.Header, body []byte) error {
 	appid := header.Get("X-Tsign-Open-App-Id")
 	timestamp := header.Get("X-Tsign-Open-TIMESTAMP")
 	sign := header.Get("X-Tsign-Open-SIGNATURE")
@@ -336,9 +336,9 @@ func (c *ESignClient) Verify(header http.Header, body []byte) error {
 	return nil
 }
 
-// NewESignClient 返回E签宝客户端
-func NewESignClient(appid, secret string) *ESignClient {
-	return &ESignClient{
+// NewClient 返回E签宝客户端
+func NewClient(appid, secret string) *Client {
+	return &Client{
 		host:   "https://openapi.esign.cn",
 		appid:  appid,
 		secret: secret,
@@ -346,9 +346,9 @@ func NewESignClient(appid, secret string) *ESignClient {
 	}
 }
 
-// NewESignSandbox 返回E签宝「沙箱环境」客户端
-func NewESignSandbox(appid, secret string) *ESignClient {
-	return &ESignClient{
+// NewSandbox 返回E签宝「沙箱环境」客户端
+func NewSandbox(appid, secret string) *Client {
+	return &Client{
 		host:   "https://smlopenapi.esign.cn",
 		appid:  appid,
 		secret: secret,
