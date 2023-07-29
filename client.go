@@ -24,16 +24,16 @@ import (
 
 // Client E签宝客户端
 type Client struct {
-	host   string
-	appid  string
-	secret string
-	client HTTPClient
-	logger func(ctx context.Context, data map[string]string)
+	host    string
+	appid   string
+	secret  string
+	httpCli HTTPClient
+	logger  func(ctx context.Context, data map[string]string)
 }
 
 // SetHTTPClient 设置自定义Client
 func (c *Client) SetHTTPClient(cli *http.Client) {
-	c.client = NewHTTPClient(cli)
+	c.httpCli = NewHTTPClient(cli)
 }
 
 // WithLogger 设置日志记录
@@ -85,7 +85,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
 	)
 
-	resp, err := c.client.Do(ctx, http.MethodGet, reqURL, nil, options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, options...)
 
 	if err != nil {
 		return fail(err)
@@ -152,7 +152,7 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
 	)
 
-	resp, err := c.client.Do(ctx, http.MethodPost, reqURL, body, options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, options...)
 
 	if err != nil {
 		return fail(err)
@@ -217,7 +217,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 
 	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
 
-	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
 
 	if err != nil {
 		return err
@@ -284,7 +284,7 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 
 	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
 
-	resp, err := c.client.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
 
 	if err != nil {
 		return err
@@ -339,19 +339,19 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 // NewClient 返回E签宝客户端
 func NewClient(appid, secret string) *Client {
 	return &Client{
-		host:   "https://openapi.esign.cn",
-		appid:  appid,
-		secret: secret,
-		client: NewDefaultHTTPClient(),
+		host:    "https://openapi.esign.cn",
+		appid:   appid,
+		secret:  secret,
+		httpCli: NewDefaultHTTPClient(),
 	}
 }
 
 // NewSandbox 返回E签宝「沙箱环境」客户端
 func NewSandbox(appid, secret string) *Client {
 	return &Client{
-		host:   "https://smlopenapi.esign.cn",
-		appid:  appid,
-		secret: secret,
-		client: NewDefaultHTTPClient(),
+		host:    "https://smlopenapi.esign.cn",
+		appid:   appid,
+		secret:  secret,
+		httpCli: NewDefaultHTTPClient(),
 	}
 }
