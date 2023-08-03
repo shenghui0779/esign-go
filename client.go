@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -99,7 +98,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 		return fail(fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode))
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return fail(err)
@@ -166,7 +165,7 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 		return fail(fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode))
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return fail(err)
@@ -231,7 +230,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return err
@@ -298,7 +297,7 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return err
