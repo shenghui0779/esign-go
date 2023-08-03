@@ -333,7 +333,7 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 	sign := header.Get("X-Tsign-Open-SIGNATURE")
 
 	if appid != c.appid {
-		return fmt.Errorf("appid mismatch, expect=%s, actual=%s", c.appid, appid)
+		return fmt.Errorf("appid mismatch, expect = %s, actual = %s", c.appid, appid)
 	}
 
 	h := hmac.New(sha256.New, []byte(c.secret))
@@ -341,7 +341,7 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 	h.Write(body)
 
 	if v := hex.EncodeToString(h.Sum(nil)); v != sign {
-		return fmt.Errorf("signature mismatch, expect=%s, actual=%s", v, sign)
+		return fmt.Errorf("signature mismatch, expect = %s, actual = %s", v, sign)
 	}
 
 	return nil
