@@ -67,24 +67,23 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 	log := NewReqLog(http.MethodGet, reqURL)
 	defer log.Do(ctx, c.logger)
 
-	sign := NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret)
+	reqHeader := http.Header{}
 
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	reqHeader.Set("Accept", Accept)
+	reqHeader.Set("X-Tsign-Open-App-Id", c.appid)
+	reqHeader.Set("X-Tsign-Open-Auth-Mode", AuthMode)
+	reqHeader.Set("X-Tsign-Open-Ca-Signature", NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret))
+	reqHeader.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
 
-	log.Set("Accept", Accept)
-	log.Set("X-Tsign-Open-App-Id", c.appid)
-	log.Set("X-Tsign-Open-Auth-Mode", AuthMode)
-	log.Set("X-Tsign-Open-Ca-Signature", sign)
-	log.Set("X-Tsign-Open-Ca-Timestamp", timestamp)
+	log.SetReqHeader(reqHeader)
 
-	options = append(options, WithHTTPHeader("Accept", Accept),
-		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
-		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
-		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
-		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
-	)
+	httpOptions := make([]HTTPOption, 0, len(reqHeader))
 
-	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, options...)
+	for k, vals := range reqHeader {
+		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
+	}
+
+	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, httpOptions...)
 
 	if err != nil {
 		return fail(err)
@@ -92,6 +91,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 
 	defer resp.Body.Close()
 
+	log.SetRespHeader(resp.Header)
 	log.SetStatusCode(resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
@@ -104,7 +104,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 		return fail(err)
 	}
 
-	log.SetResp(string(b))
+	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
 
@@ -128,30 +128,29 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 		return fail(err)
 	}
 
-	log.SetBody(string(body))
+	log.SetReqBody(string(body))
 
 	contentMD5 := ContentMD5(body)
 
-	sign := NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret)
+	reqHeader := http.Header{}
 
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	reqHeader.Set("Accept", Accept)
+	reqHeader.Set("Content-Type", ContentJSON)
+	reqHeader.Set("Content-MD5", contentMD5)
+	reqHeader.Set("X-Tsign-Open-App-Id", c.appid)
+	reqHeader.Set("X-Tsign-Open-Auth-Mode", AuthMode)
+	reqHeader.Set("X-Tsign-Open-Ca-Signature", NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret))
+	reqHeader.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
 
-	log.Set("Accept", Accept)
-	log.Set("X-Tsign-Open-App-Id", c.appid)
-	log.Set("X-Tsign-Open-Auth-Mode", AuthMode)
-	log.Set("X-Tsign-Open-Ca-Signature", sign)
-	log.Set("X-Tsign-Open-Ca-Timestamp", timestamp)
+	log.SetReqHeader(reqHeader)
 
-	options = append(options, WithHTTPHeader("Accept", Accept),
-		WithHTTPHeader("Content-Type", ContentJSON),
-		WithHTTPHeader("Content-MD5", contentMD5),
-		WithHTTPHeader("X-Tsign-Open-App-Id", c.appid),
-		WithHTTPHeader("X-Tsign-Open-Auth-Mode", AuthMode),
-		WithHTTPHeader("X-Tsign-Open-Ca-Signature", sign),
-		WithHTTPHeader("X-Tsign-Open-Ca-Timestamp", timestamp),
-	)
+	httpOptions := make([]HTTPOption, 0, len(reqHeader))
 
-	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, options...)
+	for k, vals := range reqHeader {
+		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
+	}
+
+	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, httpOptions...)
 
 	if err != nil {
 		return fail(err)
@@ -159,6 +158,7 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 
 	defer resp.Body.Close()
 
+	log.SetRespHeader(resp.Header)
 	log.SetStatusCode(resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
@@ -171,7 +171,7 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 		return fail(err)
 	}
 
-	log.SetResp(string(b))
+	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
 
@@ -198,10 +198,18 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return err
 	}
 
-	contentMD5 := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	reqHeader := http.Header{}
 
-	log.Set("Content-MD5", contentMD5)
-	log.Set("Content-Type", ContentStream)
+	reqHeader.Set("Content-Type", ContentStream)
+	reqHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil)))
+
+	log.SetReqHeader(reqHeader)
+
+	httpOptions := make([]HTTPOption, 0, len(reqHeader))
+
+	for k, vals := range reqHeader {
+		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
+	}
 
 	// 文件指针移动到头部
 	if _, err := reader.Seek(0, 0); err != nil {
@@ -214,9 +222,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return err
 	}
 
-	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
-
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), httpOptions...)
 
 	if err != nil {
 		return err
@@ -236,7 +242,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return err
 	}
 
-	log.SetResp(string(b))
+	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
 
@@ -265,10 +271,18 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 		return err
 	}
 
-	contentMD5 := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	reqHeader := http.Header{}
 
-	log.Set("Content-MD5", contentMD5)
-	log.Set("Content-Type", ContentStream)
+	reqHeader.Set("Content-Type", ContentStream)
+	reqHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil)))
+
+	log.SetReqHeader(reqHeader)
+
+	httpOptions := make([]HTTPOption, 0, len(reqHeader))
+
+	for k, vals := range reqHeader {
+		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
+	}
 
 	// 文件指针移动到头部
 	if _, err := f.Seek(0, 0); err != nil {
@@ -281,9 +295,7 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 		return err
 	}
 
-	options = append(options, WithHTTPHeader("Content-Type", ContentStream), WithHTTPHeader("Content-MD5", contentMD5))
-
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), options...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), httpOptions...)
 
 	if err != nil {
 		return err
@@ -303,7 +315,7 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 		return err
 	}
 
-	log.SetResp(string(b))
+	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
 
@@ -321,7 +333,7 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 	sign := header.Get("X-Tsign-Open-SIGNATURE")
 
 	if appid != c.appid {
-		return fmt.Errorf("appid mismatch, expect: %s, actual: %s", c.appid, appid)
+		return fmt.Errorf("appid mismatch, expect=%s, actual=%s", c.appid, appid)
 	}
 
 	h := hmac.New(sha256.New, []byte(c.secret))
@@ -329,7 +341,7 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 	h.Write(body)
 
 	if v := hex.EncodeToString(h.Sum(nil)); v != sign {
-		return fmt.Errorf("signature mismatch, expect: %s, actual: %s", v, sign)
+		return fmt.Errorf("signature mismatch, expect=%s, actual=%s", v, sign)
 	}
 
 	return nil
