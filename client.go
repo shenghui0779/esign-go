@@ -77,13 +77,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 
 	log.SetReqHeader(reqHeader)
 
-	httpOptions := make([]HTTPOption, 0, len(reqHeader))
-
-	for k, vals := range reqHeader {
-		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
-	}
-
-	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, httpOptions...)
+	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, HeaderToHttpOption(reqHeader)...)
 
 	if err != nil {
 		return fail(err)
@@ -144,13 +138,7 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 
 	log.SetReqHeader(reqHeader)
 
-	httpOptions := make([]HTTPOption, 0, len(reqHeader))
-
-	for k, vals := range reqHeader {
-		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
-	}
-
-	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, httpOptions...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, HeaderToHttpOption(reqHeader)...)
 
 	if err != nil {
 		return fail(err)
@@ -205,12 +193,6 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 
 	log.SetReqHeader(reqHeader)
 
-	httpOptions := make([]HTTPOption, 0, len(reqHeader))
-
-	for k, vals := range reqHeader {
-		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
-	}
-
 	// 文件指针移动到头部
 	if _, err := reader.Seek(0, 0); err != nil {
 		return err
@@ -222,7 +204,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return err
 	}
 
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), httpOptions...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
 
 	if err != nil {
 		return err
@@ -278,12 +260,6 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 
 	log.SetReqHeader(reqHeader)
 
-	httpOptions := make([]HTTPOption, 0, len(reqHeader))
-
-	for k, vals := range reqHeader {
-		httpOptions = append(httpOptions, WithHTTPHeader(k, vals...))
-	}
-
 	// 文件指针移动到头部
 	if _, err := f.Seek(0, 0); err != nil {
 		return err
@@ -295,7 +271,7 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 		return err
 	}
 
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), httpOptions...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
 
 	if err != nil {
 		return err
