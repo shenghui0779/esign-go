@@ -30,16 +30,6 @@ type Client struct {
 	logger  func(ctx context.Context, data map[string]string)
 }
 
-// SetHTTPClient 设置自定义Client
-func (c *Client) SetHTTPClient(cli *http.Client) {
-	c.httpCli = NewHTTPClient(cli)
-}
-
-// WithLogger 设置日志记录
-func (c *Client) WithLogger(f func(ctx context.Context, data map[string]string)) {
-	c.logger = f
-}
-
 // URL 生成请求URL
 func (c *Client) URL(path string, query url.Values) string {
 	var builder strings.Builder
@@ -235,6 +225,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	return nil
 }
 
+// PutStreamFromFile 通过文件上传文件流
 func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
 	log := NewReqLog(http.MethodPut, uploadURL)
 	defer log.Do(ctx, c.logger)
@@ -323,22 +314,51 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 	return nil
 }
 
+// Option 自定义设置项
+type Option func(c *Client)
+
+// WithClient 设置 HTTP Client
+func WithClient(cli *http.Client) Option {
+	return func(c *Client) {
+		c.httpCli = NewHTTPClient(cli)
+	}
+}
+
+// WithLogger 设置日志记录
+func WithLogger(f func(ctx context.Context, data map[string]string)) Option {
+	return func(c *Client) {
+		c.logger = f
+	}
+}
+
 // NewClient 返回E签宝客户端
-func NewClient(appid, secret string) *Client {
-	return &Client{
+func NewClient(appid, secret string, options ...Option) *Client {
+	c := &Client{
 		host:    "https://openapi.esign.cn",
 		appid:   appid,
 		secret:  secret,
 		httpCli: NewDefaultHTTPClient(),
 	}
+
+	for _, f := range options {
+		f(c)
+	}
+
+	return c
 }
 
 // NewSandbox 返回E签宝「沙箱环境」客户端
-func NewSandbox(appid, secret string) *Client {
-	return &Client{
+func NewSandbox(appid, secret string, options ...Option) *Client {
+	c := &Client{
 		host:    "https://smlopenapi.esign.cn",
 		appid:   appid,
 		secret:  secret,
 		httpCli: NewDefaultHTTPClient(),
 	}
+
+	for _, f := range options {
+		f(c)
+	}
+
+	return c
 }
