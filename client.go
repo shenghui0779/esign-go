@@ -317,7 +317,7 @@ func (c *Client) Verify(header http.Header, body []byte) error {
 // Option 自定义设置项
 type Option func(c *Client)
 
-// WithClient 设置 HTTP Client
+// WithClient 设置自定义 HTTP Client
 func WithClient(cli *http.Client) Option {
 	return func(c *Client) {
 		c.httpCli = NewHTTPClient(cli)
