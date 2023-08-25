@@ -12,8 +12,20 @@ import (
 var fail = func(err error) (gjson.Result, error) { return gjson.Result{}, err }
 
 const (
-	Accept        = "*/*"
-	AuthMode      = "Signature"
+	HeaderAccept               = "Accept"
+	HeaderContentType          = "Content-Type"
+	HeaderContentMD5           = "Content-MD5"
+	HeaderTSignOpenAppID       = "X-Tsign-Open-App-Id"
+	HeaderTSignOpenAuthMode    = "X-Tsign-Open-Auth-Mode"
+	HeaderTSignOpenCaTimestamp = "X-Tsign-Open-Ca-Timestamp"
+	HeaderTSignOpenCaSignature = "X-Tsign-Open-Ca-Signature"
+	HeaderTSignOpenTimestamp   = "X-Tsign-Open-TIMESTAMP"
+	HeaderTSignOpenSignature   = "X-Tsign-Open-SIGNATURE"
+)
+
+const (
+	AcceptAll     = "*/*"
+	AuthModeSign  = "Signature"
 	ContentJSON   = "application/json; charset=UTF-8"
 	ContentStream = "application/octet-stream"
 )

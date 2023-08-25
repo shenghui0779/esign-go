@@ -59,11 +59,11 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 
 	reqHeader := http.Header{}
 
-	reqHeader.Set("Accept", Accept)
-	reqHeader.Set("X-Tsign-Open-App-Id", c.appid)
-	reqHeader.Set("X-Tsign-Open-Auth-Mode", AuthMode)
-	reqHeader.Set("X-Tsign-Open-Ca-Signature", NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret))
-	reqHeader.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	reqHeader.Set(HeaderAccept, AcceptAll)
+	reqHeader.Set(HeaderTSignOpenAppID, c.appid)
+	reqHeader.Set(HeaderTSignOpenAuthMode, AuthModeSign)
+	reqHeader.Set(HeaderTSignOpenCaTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
+	reqHeader.Set(HeaderTSignOpenCaSignature, NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret))
 
 	log.SetReqHeader(reqHeader)
 
@@ -118,13 +118,13 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 
 	reqHeader := http.Header{}
 
-	reqHeader.Set("Accept", Accept)
-	reqHeader.Set("Content-Type", ContentJSON)
-	reqHeader.Set("Content-MD5", contentMD5)
-	reqHeader.Set("X-Tsign-Open-App-Id", c.appid)
-	reqHeader.Set("X-Tsign-Open-Auth-Mode", AuthMode)
-	reqHeader.Set("X-Tsign-Open-Ca-Signature", NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret))
-	reqHeader.Set("X-Tsign-Open-Ca-Timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	reqHeader.Set(HeaderAccept, AcceptAll)
+	reqHeader.Set(HeaderContentType, ContentJSON)
+	reqHeader.Set(HeaderContentMD5, contentMD5)
+	reqHeader.Set(HeaderTSignOpenAppID, c.appid)
+	reqHeader.Set(HeaderTSignOpenAuthMode, AuthModeSign)
+	reqHeader.Set(HeaderTSignOpenCaTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
+	reqHeader.Set(HeaderTSignOpenCaSignature, NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret))
 
 	log.SetReqHeader(reqHeader)
 
@@ -178,8 +178,8 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 
 	reqHeader := http.Header{}
 
-	reqHeader.Set("Content-Type", ContentStream)
-	reqHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil)))
+	reqHeader.Set(HeaderContentType, ContentStream)
+	reqHeader.Set(HeaderContentMD5, base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
 	log.SetReqHeader(reqHeader)
 
@@ -246,8 +246,8 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 
 	reqHeader := http.Header{}
 
-	reqHeader.Set("Content-Type", ContentStream)
-	reqHeader.Set("Content-MD5", base64.StdEncoding.EncodeToString(h.Sum(nil)))
+	reqHeader.Set(HeaderContentType, ContentStream)
+	reqHeader.Set(HeaderContentMD5, base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
 	log.SetReqHeader(reqHeader)
 
@@ -295,9 +295,9 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 
 // Verify 签名验证 (回调通知等)
 func (c *Client) Verify(header http.Header, body []byte) error {
-	appid := header.Get("X-Tsign-Open-App-Id")
-	timestamp := header.Get("X-Tsign-Open-TIMESTAMP")
-	sign := header.Get("X-Tsign-Open-SIGNATURE")
+	appid := header.Get(HeaderTSignOpenAppID)
+	timestamp := header.Get(HeaderTSignOpenTimestamp)
+	sign := header.Get(HeaderTSignOpenSignature)
 
 	if appid != c.appid {
 		return fmt.Errorf("appid mismatch, expect = %s, actual = %s", c.appid, appid)
