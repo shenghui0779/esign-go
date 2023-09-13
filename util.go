@@ -44,17 +44,14 @@ func ContentMD5(b []byte) string {
 // FileMD5 计算文件MD5值
 func FileMD5(filename string) (string, int64) {
 	f, err := os.Open(filename)
-
 	if err != nil {
 		return err.Error(), -1
 	}
-
 	defer f.Close()
 
 	h := md5.New()
 
 	n, err := io.Copy(h, f)
-
 	if err != nil {
 		return err.Error(), -1
 	}

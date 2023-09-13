@@ -35,11 +35,9 @@ func (c *Client) URL(path string, query url.Values) string {
 	var builder strings.Builder
 
 	builder.WriteString(c.host)
-
 	if len(path) != 0 && path[0] != '/' {
 		builder.WriteString("/")
 	}
-
 	builder.WriteString(path)
 
 	if len(query) != 0 {
@@ -68,11 +66,9 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 	log.SetReqHeader(reqHeader)
 
 	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, HeaderToHttpOption(reqHeader)...)
-
 	if err != nil {
 		return fail(err)
 	}
-
 	defer resp.Body.Close()
 
 	log.SetRespHeader(resp.Header)
@@ -83,7 +79,6 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 	}
 
 	b, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return fail(err)
 	}
@@ -91,7 +86,6 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
-
 	if code := ret.Get("code").Int(); code != 0 {
 		return fail(fmt.Errorf("%d | %s", code, ret.Get("message")))
 	}
@@ -107,7 +101,6 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 	defer log.Do(ctx, c.logger)
 
 	body, err := json.Marshal(params)
-
 	if err != nil {
 		return fail(err)
 	}
@@ -129,11 +122,9 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 	log.SetReqHeader(reqHeader)
 
 	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, HeaderToHttpOption(reqHeader)...)
-
 	if err != nil {
 		return fail(err)
 	}
-
 	defer resp.Body.Close()
 
 	log.SetRespHeader(resp.Header)
@@ -144,7 +135,6 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 	}
 
 	b, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return fail(err)
 	}
@@ -152,7 +142,6 @@ func (c *Client) PostJSON(ctx context.Context, path string, params X, options ..
 	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
-
 	if code := ret.Get("code").Int(); code != 0 {
 		return fail(fmt.Errorf("%d | %s", code, ret.Get("message")))
 	}
@@ -171,7 +160,6 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	}
 
 	h := md5.New()
-
 	if _, err := io.Copy(h, reader); err != nil {
 		return err
 	}
@@ -189,17 +177,14 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 20<<10)) // 20kb
-
 	if _, err := io.Copy(buf, reader); err != nil {
 		return err
 	}
 
 	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
-
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
 	log.SetStatusCode(resp.StatusCode)
@@ -209,7 +194,6 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	}
 
 	b, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return err
 	}
@@ -217,7 +201,6 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
-
 	if code := ret.Get("errCode").Int(); code != 0 {
 		return fmt.Errorf("%d | %s", code, ret.Get("msg"))
 	}
@@ -231,7 +214,6 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 	defer log.Do(ctx, c.logger)
 
 	f, err := os.Open(filename)
-
 	if err != nil {
 		return err
 	}
@@ -239,7 +221,6 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 	defer f.Close()
 
 	h := md5.New()
-
 	if _, err := io.Copy(h, f); err != nil {
 		return err
 	}
@@ -257,17 +238,14 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 20<<10)) // 20kb
-
 	if _, err := io.Copy(buf, f); err != nil {
 		return err
 	}
 
 	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
-
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
 	log.SetStatusCode(resp.StatusCode)
@@ -277,7 +255,6 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 	}
 
 	b, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return err
 	}
@@ -285,7 +262,6 @@ func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename stri
 	log.SetRespBody(string(b))
 
 	ret := gjson.ParseBytes(b)
-
 	if code := ret.Get("errCode").Int(); code != 0 {
 		return fmt.Errorf("%d | %s", code, ret.Get("msg"))
 	}
