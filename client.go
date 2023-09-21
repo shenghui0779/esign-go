@@ -72,7 +72,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 
 	if params != nil {
-		body, err := json.Marshal(params)
+		body, err = json.Marshal(params)
 		if err != nil {
 			return fail(err)
 		}
