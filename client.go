@@ -30,8 +30,7 @@ type Client struct {
 	logger  func(ctx context.Context, data map[string]string)
 }
 
-// URL 生成请求URL
-func (c *Client) URL(path string, query url.Values) string {
+func (c *Client) url(path string, query url.Values) string {
 	var builder strings.Builder
 
 	builder.WriteString(c.host)
@@ -48,24 +47,51 @@ func (c *Client) URL(path string, query url.Values) string {
 	return builder.String()
 }
 
-// GetJSON GET请求JSON数据
-func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, options ...HTTPOption) (gjson.Result, error) {
-	reqURL := c.URL(path, query)
+func (c *Client) do(ctx context.Context, method, path string, query url.Values, params X) (gjson.Result, error) {
+	reqURL := c.url(path, query)
 
-	log := NewReqLog(http.MethodGet, reqURL)
+	log := NewReqLog(method, reqURL)
 	defer log.Do(ctx, c.logger)
 
-	reqHeader := http.Header{}
+	header := http.Header{}
 
-	reqHeader.Set(HeaderAccept, AcceptAll)
-	reqHeader.Set(HeaderTSignOpenAppID, c.appid)
-	reqHeader.Set(HeaderTSignOpenAuthMode, AuthModeSign)
-	reqHeader.Set(HeaderTSignOpenCaTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
-	reqHeader.Set(HeaderTSignOpenCaSignature, NewSigner(http.MethodGet, path, WithSignValues(query)).Do(c.secret))
+	header.Set(HeaderAccept, AcceptAll)
+	header.Set(HeaderTSignOpenAppID, c.appid)
+	header.Set(HeaderTSignOpenAuthMode, AuthModeSign)
+	header.Set(HeaderTSignOpenCaTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
 
-	log.SetReqHeader(reqHeader)
+	var (
+		body []byte
+		err  error
+	)
 
-	resp, err := c.httpCli.Do(ctx, http.MethodGet, reqURL, nil, HeaderToHttpOption(reqHeader)...)
+	options := make([]SignOption, 0)
+
+	if len(query) != 0 {
+		options = append(options, WithSignValues(query))
+	}
+
+	if params != nil {
+		body, err := json.Marshal(params)
+		if err != nil {
+			return fail(err)
+		}
+
+		log.SetReqBody(string(body))
+
+		contentMD5 := ContentMD5(body)
+
+		header.Set(HeaderContentType, ContentJSON)
+		header.Set(HeaderContentMD5, contentMD5)
+
+		options = append(options, WithSignContMD5(contentMD5), WithSignContType(ContentJSON))
+	}
+
+	header.Set(HeaderTSignOpenCaSignature, NewSigner(method, path, options...).Do(c.secret))
+
+	log.SetReqHeader(header)
+
+	resp, err := c.httpCli.Do(ctx, method, reqURL, body, HeaderToHttpOption(header)...)
 	if err != nil {
 		return fail(err)
 	}
@@ -93,83 +119,21 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, opt
 	return ret.Get("data"), nil
 }
 
-// PostJSON POST请求JSON数据
-func (c *Client) PostJSON(ctx context.Context, path string, params X, options ...HTTPOption) (gjson.Result, error) {
-	reqURL := c.URL(path, nil)
-
-	log := NewReqLog(http.MethodPost, reqURL)
-	defer log.Do(ctx, c.logger)
-
-	body, err := json.Marshal(params)
-	if err != nil {
-		return fail(err)
-	}
-
-	log.SetReqBody(string(body))
-
-	contentMD5 := ContentMD5(body)
-
-	reqHeader := http.Header{}
-
-	reqHeader.Set(HeaderAccept, AcceptAll)
-	reqHeader.Set(HeaderContentType, ContentJSON)
-	reqHeader.Set(HeaderContentMD5, contentMD5)
-	reqHeader.Set(HeaderTSignOpenAppID, c.appid)
-	reqHeader.Set(HeaderTSignOpenAuthMode, AuthModeSign)
-	reqHeader.Set(HeaderTSignOpenCaTimestamp, strconv.FormatInt(time.Now().UnixMilli(), 10))
-	reqHeader.Set(HeaderTSignOpenCaSignature, NewSigner(http.MethodPost, path, WithSignContMD5(contentMD5), WithSignContType(ContentJSON)).Do(c.secret))
-
-	log.SetReqHeader(reqHeader)
-
-	resp, err := c.httpCli.Do(ctx, http.MethodPost, reqURL, body, HeaderToHttpOption(reqHeader)...)
-	if err != nil {
-		return fail(err)
-	}
-	defer resp.Body.Close()
-
-	log.SetRespHeader(resp.Header)
-	log.SetStatusCode(resp.StatusCode)
-
-	if resp.StatusCode != http.StatusOK {
-		return fail(fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode))
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fail(err)
-	}
-
-	log.SetRespBody(string(b))
-
-	ret := gjson.ParseBytes(b)
-	if code := ret.Get("code").Int(); code != 0 {
-		return fail(fmt.Errorf("%d | %s", code, ret.Get("message")))
-	}
-
-	return ret.Get("data"), nil
-}
-
-// PutStream 上传文件流
-func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker, options ...HTTPOption) error {
+func (c *Client) doStream(ctx context.Context, uploadURL string, reader io.ReadSeeker) error {
 	log := NewReqLog(http.MethodPut, uploadURL)
 	defer log.Do(ctx, c.logger)
-
-	// 文件指针移动到头部
-	if _, err := reader.Seek(0, 0); err != nil {
-		return err
-	}
 
 	h := md5.New()
 	if _, err := io.Copy(h, reader); err != nil {
 		return err
 	}
 
-	reqHeader := http.Header{}
+	header := http.Header{}
 
-	reqHeader.Set(HeaderContentType, ContentStream)
-	reqHeader.Set(HeaderContentMD5, base64.StdEncoding.EncodeToString(h.Sum(nil)))
+	header.Set(HeaderContentType, ContentStream)
+	header.Set(HeaderContentMD5, base64.StdEncoding.EncodeToString(h.Sum(nil)))
 
-	log.SetReqHeader(reqHeader)
+	log.SetReqHeader(header)
 
 	// 文件指针移动到头部
 	if _, err := reader.Seek(0, 0); err != nil {
@@ -181,7 +145,7 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 		return err
 	}
 
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
+	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(header)...)
 	if err != nil {
 		return err
 	}
@@ -208,65 +172,30 @@ func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.Read
 	return nil
 }
 
-// PutStreamFromFile 通过文件上传文件流
-func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename string, options ...HTTPOption) error {
-	log := NewReqLog(http.MethodPut, uploadURL)
-	defer log.Do(ctx, c.logger)
+// GetJSON GET请求JSON数据
+func (c *Client) GetJSON(ctx context.Context, path string, query url.Values) (gjson.Result, error) {
+	return c.do(ctx, http.MethodGet, path, query, nil)
+}
 
+// PostJSON POST请求JSON数据
+func (c *Client) PostJSON(ctx context.Context, path string, params X) (gjson.Result, error) {
+	return c.do(ctx, http.MethodPost, path, nil, params)
+}
+
+// PutStream 上传文件流
+func (c *Client) PutStream(ctx context.Context, uploadURL string, reader io.ReadSeeker) error {
+	return c.doStream(ctx, uploadURL, reader)
+}
+
+// PutStreamFromFile 通过文件上传文件流
+func (c *Client) PutStreamFromFile(ctx context.Context, uploadURL, filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
-
 	defer f.Close()
 
-	h := md5.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return err
-	}
-
-	reqHeader := http.Header{}
-
-	reqHeader.Set(HeaderContentType, ContentStream)
-	reqHeader.Set(HeaderContentMD5, base64.StdEncoding.EncodeToString(h.Sum(nil)))
-
-	log.SetReqHeader(reqHeader)
-
-	// 文件指针移动到头部
-	if _, err := f.Seek(0, 0); err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer(make([]byte, 0, 20<<10)) // 20kb
-	if _, err := io.Copy(buf, f); err != nil {
-		return err
-	}
-
-	resp, err := c.httpCli.Do(ctx, http.MethodPut, uploadURL, buf.Bytes(), HeaderToHttpOption(reqHeader)...)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	log.SetStatusCode(resp.StatusCode)
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP Request Error, StatusCode = %d", resp.StatusCode)
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	log.SetRespBody(string(b))
-
-	ret := gjson.ParseBytes(b)
-	if code := ret.Get("errCode").Int(); code != 0 {
-		return fmt.Errorf("%d | %s", code, ret.Get("msg"))
-	}
-
-	return nil
+	return c.doStream(ctx, uploadURL, f)
 }
 
 // Verify 签名验证 (回调通知等)
