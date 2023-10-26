@@ -1,4 +1,4 @@
-module github.com/shenghui0779/esign
+module github.com/shenghui0779/esign-go
 
 go 1.18
 
