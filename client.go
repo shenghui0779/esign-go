@@ -66,7 +66,6 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	)
 
 	options := make([]SignOption, 0)
-
 	if len(query) != 0 {
 		options = append(options, WithSignValues(query))
 	}
